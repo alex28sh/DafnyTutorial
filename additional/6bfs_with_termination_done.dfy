@@ -1,83 +1,43 @@
-// 1. Introduce algorithm, visited variable, so on
-// 2. Introduce 1-4 predicates
-// 3. Solve case with start == end (ask)
-// 4. Observe the problem here: (ask)
-//      var neighbors := graph[node]; // out of bounds 
-//    Add valid_queue predicate in invariants
-// 5. Add standard index invariant in the inner cycle (it seems, it can prove without it)
-// 6. Look at the return statement: postcondition cannot be proven there 
-//    // (not a part of a plan) Do we need to split equation into 2 implications?
-//    The intuiton here - is that for all visited vertices we should prove that there is a path from start to this vertex
-//    Let's add such invariants 
-// 7. Invariant in the outer loop cannot be proven on enty (ask what to do)
-//    Let's add a necessary assertion
-// 8. Inner invariant cannot be proven to be maintained
-//    Let's try to observe how it's behaving when adding a new vertex into visited
-//    Add assertion
-//    It cannot be proven 
-//    What can we do (hint we don't need any invariants - only assertions and ghost variables here)? 
-//    Let's pick up path `p`, statisfying same condition for node, and try to make transition to `p + [neighbor]`
-//    Add interesting assertions
-//    See, it can be proven
-// 9. Now, we have to prove same postcondition, but for case, when path does not exist 
-//    So, we want to prove smth like `(exists p : seq<int> :: is_graph_path(graph, p) && path_ends_are(p, start, end)) ==> false`
-//    Let's add this assertion at the end, and make sure, it cannot be proven 
-//    It can be reformulated like `forall p : seq<int> :: is_graph_path(graph, p) && path_ends_are(p, start, end) ==> false`
-//    It seems like here we should prove some contradiction for existing path to the end 
-//    Let's try to find out contradict assumptions (ask them)
-//    First: in each path there is a couple of consequent vertices, one of them is visited, and another is not (if start is visited and end is not)
-//    Second: if vertex is visited and already processed, then all its neighbors are visited
-//    (Explain them graphically)
-// 10. Add these contradictions as invariants
-//     Both cannot be proven
-// 11. Let's try to prove second (ask them?)
-//     Prove by just adding help invariant to the inner loop (usual trick)
-// 12. Come back to the first assumption
-//     Try to state lemma explicitely and add into the end of each cycle
-// 13. Ask them to suggest how to prove `in_visited_forall` 
-//     Fill in `in_visited_forall` (also stating `in_visited`, but not proving)
-// 14. Ask them to prove `in_visited` (hint: use cycle and invariant)
-// 15. It seems like, thats all!
-
-
+ghost predicate no_duplicates(xs: seq<int>)
+{
+    forall i, j :: 0 <= i < j < |xs| ==> xs[i] != xs[j]
+}
 ghost predicate is_node(graph: seq<seq<int>>, n: int)
 {
     0 <= n < |graph|
 }
-
 ghost predicate is_graph(graph: seq<seq<int>>)
 {
     forall i :: is_node(graph, i) ==>
         forall k {:trigger graph[i][k]} :: 0 <= k < |graph[i]| ==> is_node(graph, graph[i][k])
 }
-
 ghost predicate is_graph_path(graph: seq<seq<int>>, path: seq<int>)
 {
+    |path| > 0 &&
     (forall i :: 0 <= i < |path| ==> is_node(graph, path[i])) &&
     (forall i :: 0 <= i < |path| - 1 ==> path[i+1] in graph[path[i]])
 }
-
 ghost predicate path_ends_are(path: seq<int>, start: int, end: int)
 {
     |path| > 0 && path[0] == start && path[|path|-1] == end
 }
-
 ghost predicate path_crosses(path: seq<int>, visited: set<int>)
 {
     exists i :: 0 <= i < |path| - 1 && path[i] in visited && path[i+1] !in visited
 }
-
 ghost predicate valid_visited(graph: seq<seq<int>>, visited: set<int>)
 {
     forall e :: e in visited ==> is_node(graph, e)
 }
-
 ghost predicate valid_queue(graph: seq<seq<int>>, q: seq<int>, visited: set<int>)
 {
-    (forall i :: 0 <= i < |q| ==> is_node(graph, q[i]) && q[i] in visited) &&
-    (forall i, j :: 0 <= i < j < |q| ==> q[i] != q[j])
+    (forall i :: 0 <= i < |q| ==> is_node(graph, q[i]) && q[i] in visited) && no_duplicates(q)
 }
-
+ghost predicate fully_visited(graph: seq<seq<int>>, e: int, visited: set<int>)
+    requires is_node(graph, e)
+{
+    forall k :: k in graph[e] ==> k in visited
+}
 lemma in_visited(path : seq<int>, visited : set<int>) 
     requires |path| > 0 
     requires path[0] in visited
@@ -96,7 +56,6 @@ lemma in_visited(path : seq<int>, visited : set<int>)
         i := i + 1;
     }
 }
-
 lemma in_visited_forall(graph : seq<seq<int>>, visited : set<int>, start : int, end : int) 
     requires is_node(graph, start)
     requires is_node(graph, end)
@@ -104,21 +63,75 @@ lemma in_visited_forall(graph : seq<seq<int>>, visited : set<int>, start : int, 
     requires end !in visited
     ensures forall p : seq<int> :: is_graph_path(graph, p) && path_ends_are(p, start, end) ==> path_crosses(p, visited)
 {
-    // ghost var p : seq<int> :| is_graph_path(graph, p) && path_ends_are(p, start, end);
-    // in_visited(p, visited);
     forall p : seq<int> | is_graph_path(graph, p) && path_ends_are(p, start, end)
         ensures path_crosses(p, visited)
     {
         in_visited(p, visited);
     }
 }
-
+lemma set_pigeonhole(n: nat, xs: set<int>)
+    requires forall k :: k in xs ==> 0 <= k < n
+    ensures |xs| <= n
+{
+    if (n > 0) {
+        set_pigeonhole(n-1, xs - {n-1});
+    }
+}
+lemma no_duplicates_seq_to_set(xs: seq<int>)
+    requires no_duplicates(xs)
+    ensures |set k | k in xs| == |xs|
+{
+    if |xs| > 0 {
+        var s0 := set k | k in xs;
+        var s1 := set k | k in xs[1..];
+        assert s0 == s1 + {xs[0]};
+        no_duplicates_seq_to_set(xs[1..]);
+    }
+}
+lemma no_duplicates_seq_pigeonhole(n: nat, xs: seq<int>)
+    requires forall k :: k in xs ==> 0 <= k < n
+    requires no_duplicates(xs)
+    ensures |xs| <= n
+{
+    set_pigeonhole(n, set k | k in xs);
+    no_duplicates_seq_to_set(xs);
+}
+lemma queue_size_bound(graph: seq<seq<int>>, q: seq<int>, visited: set<int>)
+    requires valid_queue(graph, q, visited)
+    ensures |q| <= |graph|
+{
+    no_duplicates_seq_pigeonhole(|graph|, q);
+}
+lemma visited_size_bound(graph: seq<seq<int>>, visited: set<int>)
+    requires valid_visited(graph, visited)
+    ensures |visited| <= |graph|
+{
+    set_pigeonhole(|graph|, visited);
+}
+// This lemma is trivial, but splitting off the logic makes the verification go much faster.
+lemma set_insertion(xs: seq<int>, s: set<int>, i: int)
+    requires 0 <= i < |xs|
+    requires forall j :: 0 <= j < i ==> xs[j] in s
+    ensures forall j :: 0 <= j < i+1 ==> xs[j] in (s + {xs[i]})
+{}
+lemma set_insertion_trivial(xs: seq<int>, s: set<int>, i: int)
+    requires 0 <= i < |xs|
+    requires xs[i] in s
+    requires forall j :: 0 <= j < i ==> xs[j] in s
+    ensures forall j :: 0 <= j < i+1 ==> xs[j] in s
+{}
+lemma path_extend(graph: seq<seq<int>>, path: seq<int>, n: int)
+    requires is_graph(graph)
+    requires is_graph_path(graph, path)
+    requires n in graph[path[|path|-1]]
+    ensures is_graph_path(graph, path + [n])
+{}
 method bfs(graph : seq<seq<int>>, start : int, end : int) returns (b : bool)
     requires is_node(graph, start)
     requires is_node(graph, end)
     requires is_graph(graph)
     ensures b == exists p : seq<int> :: is_graph_path(graph, p) && path_ends_are(p, start, end)
-    decreases *
+    // decreases *
 {
     if start == end {
         b := true;
@@ -134,7 +147,7 @@ method bfs(graph : seq<seq<int>>, start : int, end : int) returns (b : bool)
     
     assert is_graph_path(graph, [start]) && path_ends_are([start], start, start);
     in_visited_forall(graph, visited, start, end);
-
+    ghost var unvisited := |graph| - 1;
     while |q| > 0
         invariant start in visited
         invariant end !in visited
@@ -142,9 +155,14 @@ method bfs(graph : seq<seq<int>>, start : int, end : int) returns (b : bool)
         invariant valid_visited(graph, visited)
         invariant forall e : int :: e in visited ==> exists p : seq<int> :: is_graph_path(graph, p) && path_ends_are(p, start, e)
         invariant forall p : seq<int> :: is_graph_path(graph, p) && path_ends_are(p, start, end) ==> path_crosses(p, visited)
-        invariant forall n : int :: is_node(graph, n) && n in visited && n !in q ==> (forall i : int :: 0 <= i < |graph[n]| ==> graph[n][i] in visited)
-        decreases *
+        invariant forall e : int :: is_node(graph, e) && e in visited && e !in q ==> fully_visited(graph, e, visited)
+        invariant unvisited == |graph| - |visited|
+        invariant unvisited >= 0
+        decreases |q| + unvisited
     {
+        ghost var start_q := q;
+        ghost var start_unvisited := unvisited;
+        ghost var new_visited := 0;
         var node := q[0];
         q := q[1..];
         var neighbors := graph[node];
@@ -158,26 +176,38 @@ method bfs(graph : seq<seq<int>>, start : int, end : int) returns (b : bool)
             invariant forall e : int :: e in visited ==> exists p : seq<int> :: is_graph_path(graph, p) && path_ends_are(p, start, e)
             invariant forall j : int :: 0 <= j < i ==> neighbors[j] in visited
             invariant forall p : seq<int> :: is_graph_path(graph, p) && path_ends_are(p, start, end) ==> path_crosses(p, visited)
-            invariant forall n : int :: is_node(graph, n) && n in visited && n !in q && n != node ==> (forall i : int :: 0 <= i < |graph[n]| ==> graph[n][i] in visited)
+            invariant forall e : int :: is_node(graph, e) && e in visited && e !in q && e != node ==> fully_visited(graph, e, visited)
+            invariant unvisited == |graph| - |visited|
+            invariant |q| == |start_q| + new_visited - 1
+            invariant unvisited == start_unvisited - new_visited
+            invariant unvisited >= 0
         {
             var neighbor := neighbors[i];
             if neighbor !in visited {
                 ghost var p : seq<int> :| is_graph_path(graph, p) && path_ends_are(p, start, node);
+                path_extend(graph, p, neighbor);
                 p := p + [neighbor];
-                assert is_graph_path(graph, p) && path_ends_are(p, start, neighbor);
-                visited := visited + {neighbor};
+                assert is_graph_path(graph, p);
+                assert path_ends_are(p, start, neighbor);
                 if neighbor == end {
                     b := true;
                     return;
                 }
                 q := q + [neighbor];
+                set_insertion(neighbors, visited, i);
+                visited := visited + {neighbor};
+                unvisited := unvisited - 1;
+                new_visited := new_visited + 1;
+            } else {
+                set_insertion_trivial(neighbors, visited, i);
             }
             i := i + 1;
             in_visited_forall(graph, visited, start, end);
+            queue_size_bound(graph, q, visited);
+            visited_size_bound(graph, visited);
+            assert |q| + unvisited < |start_q| + start_unvisited;
         }
         in_visited_forall(graph, visited, start, end);
         assert (forall i : int :: 0 <= i < |graph[node]| ==> graph[node][i] in visited);
     }
-    assert forall p : seq<int> :: is_graph_path(graph, p) && path_ends_are(p, start, end) ==> path_crosses(p, visited);
-    assert forall p : seq<int> :: is_graph_path(graph, p) && path_ends_are(p, start, end) ==> false;
 }

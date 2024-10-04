@@ -1,3 +1,8 @@
+// While proving `bfs` together, we ommited proof of the termination. 
+// Instead, we used `decreases *`, which states, that `while` cycle and method are possibly non-terminating and 
+// Dafny don't need to prove termination. 
+// Your task is to remove this statement and prove that the method `bfs` terminates.
+
 ghost predicate is_node(graph: seq<seq<int>>, n: int)
 {
     0 <= n < |graph|

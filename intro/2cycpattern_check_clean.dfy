@@ -15,6 +15,7 @@ method CycpatternCheck(word: string, pattern: string) returns (result: bool)
 {
   var i := 0;
   while i <= |pattern|
+    // add the invariants
   {
     if IsSubstring(word, RotateString(pattern, i)) {
       return true;
