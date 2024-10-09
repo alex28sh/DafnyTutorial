@@ -1,10 +1,6 @@
 
-// Now, try to verify method on your own 
-// Add necessary invariants to the cycle below 
-
-predicate strictSorted(s : seq<int>) {
-	forall u, w :: 0 <= u < w < |s| ==> s[u] < s[w]
-}
+// `mcontained` - checks if 1st sequence is contained in 2nd sequence
+// sequences are strictly sorted
 
 // seq<int> - data type for sequence of integers
 // a : seq<int> 
@@ -14,14 +10,10 @@ predicate strictSorted(s : seq<int>) {
 // a[i..j]
 
 method mcontained(v : seq<int>, w : seq<int>) returns (b : bool) 
-    requires |v| <= |w|
-    requires strictSorted(v)
-    requires strictSorted(w)
-    ensures b == forall k:: 0 <= k < |v| ==> v[k] in w
 {
 	var i := 0;
 	var j := 0;
-	while (i < |v| && j < |w| && (v[i] >= w[j]))
+	while (i < |v| && j < |w| && (v[i] > w[j]))
         // add here necessary invariants
 	{	
 		if (v[i] == w[j]) {
@@ -31,4 +23,12 @@ method mcontained(v : seq<int>, w : seq<int>) returns (b : bool)
 		
 	}
 	b := i == |v|;
+}
+
+method Main() {
+    print("Hello, world!" + "\n");
+    var res := mcontained([1, 2, 3, 5], [1, 2, 3, 4, 5, 6]);
+    print res, "\n";
+    var res1 := mcontained([1, 2, 3, 5], [1, 2, 3, 4, 5, 8]);
+    print res1, "\n";
 }

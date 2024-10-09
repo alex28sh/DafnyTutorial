@@ -48,7 +48,7 @@ ghost predicate is_node(graph: seq<seq<int>>, n: int)
 ghost predicate is_graph(graph: seq<seq<int>>)
 {
     forall i :: is_node(graph, i) ==>
-        forall k {:trigger graph[i][k]} :: 0 <= k < |graph[i]| ==> is_node(graph, graph[i][k])
+        forall k :: 0 <= k < |graph[i]| ==> is_node(graph, graph[i][k])
 }
 
 ghost predicate is_graph_path(graph: seq<seq<int>>, path: seq<int>)

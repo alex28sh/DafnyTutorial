@@ -6,7 +6,7 @@ ghost predicate is_node(graph: seq<seq<int>>, n: int)
 ghost predicate is_graph(graph: seq<seq<int>>)
 {
     forall i :: is_node(graph, i) ==>
-        forall k {:trigger graph[i][k]} :: 0 <= k < |graph[i]| ==> is_node(graph, graph[i][k])
+        forall k :: 0 <= k < |graph[i]| ==> is_node(graph, graph[i][k])
 }
 
 ghost predicate is_graph_path(graph: seq<seq<int>>, path: seq<int>)
@@ -20,10 +20,14 @@ ghost predicate path_ends_are(path: seq<int>, start: int, end: int)
     |path| > 0 && path[0] == start && path[|path|-1] == end
 }
 
+// graph - adjececny list representation of a graph
+// want to check if we can reach `end` vertex `start` vertex
+// we are using standard bfs algorithm
+
 method bfs(graph : seq<seq<int>>, start : int, end : int) returns (b : bool)
     requires is_node(graph, start)
     requires is_node(graph, end)
-    requires is_graph(graph)
+    requires is_graph(graph) // valid graph
     ensures b == exists p : seq<int> :: is_graph_path(graph, p) && path_ends_are(p, start, end)
     decreases *
 {
@@ -32,8 +36,8 @@ method bfs(graph : seq<seq<int>>, start : int, end : int) returns (b : bool)
         return;
     }
     b := false;
-    var q := [start];
-    var visited : set<int> := {start};
+    var q := [start]; // queue
+    var visited : set<int> := {start}; // set of visited nodes
 
     while |q| > 0
         decreases *

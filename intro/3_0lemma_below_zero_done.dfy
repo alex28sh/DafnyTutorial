@@ -5,6 +5,12 @@
 // 4 step - add assert `assert psum(ops[.. (i + 1)]) == psum(ops[.. i]) + ops[i]`
 // 5 step - add last invariant
 // 6 step - introduce calc (here, I'm just showing how to use it, unlike other steps)
+// 7th step - prove psum_property with calc
+
+
+// at the end I should say something about optimization
+// you have cubid and quadratic solutions of dynamic programming task
+
 lemma docalc(x : int, y: int)
   ensures (x + y) * (x + y) == x * x + 2 * x * y + y * y
 {
@@ -30,7 +36,6 @@ lemma docalc(x : int, y: int)
     x * x + 2 * x * y + y * y;
   }
 }
-// 7th step - prove psum_property with calc
 
 
 function psum(s: seq<int>): int
@@ -52,8 +57,8 @@ lemma psum_property(s: seq<int>, i: int)
 }
 
 method below_zero(ops: seq<int>) returns (res : bool)
-    ensures res ==> forall i : int :: 0 <= i <= |ops| ==> psum(ops[.. i]) >= 0
-    ensures !res ==> exists i : int :: 0 <= i <= |ops| && psum(ops[.. i]) < 0
+    ensures !res ==> forall i : int :: 0 <= i <= |ops| ==> psum(ops[.. i]) >= 0
+    ensures res ==> exists i : int :: 0 <= i <= |ops| && psum(ops[.. i]) < 0
 {
     var balance : int := 0;
     var i : int := 0;
@@ -73,10 +78,10 @@ method below_zero(ops: seq<int>) returns (res : bool)
             assert balance == psum(ops[.. i + 1]); // add this to show that we need 2nd invariant and 
             // assert `psum(ops[.. (i + 1)]) == psum(ops[.. i]) + ops[i]` is required
             assert psum(ops[.. i + 1]) < 0; // first, add this to show that we need previous assert
-            return false;
+            return true;
         }
         i := i + 1;
     }
 
-    return true;
+    return false;
 }
